@@ -8,7 +8,7 @@ const client = new Client({
 
 client.on('ready', async() => {
     console.log(`Client is ready`);
-    // client.user.setStatus('invisible')
+    client.user.setStatus('invisible')
 });
 
 client.on('messageCreate', async message => {
