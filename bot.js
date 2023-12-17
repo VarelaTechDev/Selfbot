@@ -20,7 +20,7 @@ client.on('messageCreate', async message => {
             const response = await respondPissy();
             message.channel.send(response);
         } else {
-            const aiResponse = await ask(messageContent, userName); // Pass the user's name
+            const aiResponse = await ask(messageContent, userName, message.author.id); // Pass the user's name
             message.channel.send(aiResponse);
         }
     }
