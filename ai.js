@@ -2,8 +2,12 @@ require('dotenv').config();
 const OpenAI = require('openai').OpenAI
 const openai = new OpenAI()
 
+const getKoyoriPersonalityPrompt = require('./personality_prompt.js')
 
 const mysql = require('mysql2/promise');
+
+const MAX_TOKENS = 500
+const HISTORY_LIMIT = 10; // Number of messages to consider from conversation history
 
 // Setup MySQL Connection
 const connection = mysql.createPool({
@@ -38,41 +42,59 @@ async function addMessageToHistory(userId, message, sender) {
 
 async function ask(promptText, userName, userId) {
     try {
+        // Check if the initial prompt has been sent
+        const [initialCheck] = await connection.query('SELECT initialPromptSent FROM userInitialPrompt WHERE userId = ? LIMIT 1', [userId]);
+        let initialPromptSent = initialCheck.length > 0 && initialCheck[0].initialPromptSent;
+
+        // Retrieve the conversation history
         let conversationHistory = await getConversationHistory(userId);
+
+        // Limit the conversation history to the last HISTORY_LIMIT messages
+        // This ensures that the conversation context sent to OpenAI is recent and relevant
+        // It could include any combination of user and bot messages, totaling up to HISTORY_LIMIT messages
+        let limitedHistory = conversationHistory.slice(-HISTORY_LIMIT);
+
         let messages = [];
 
-        // Reconstruct conversation for OpenAI
-        // ...
-
-        // Reconstruct conversation for OpenAI
-        conversationHistory.forEach(entry => {
-            // Map 'bot' to 'assistant' for compatibility with OpenAI's API
-            const role = entry.sender === 'bot' ? 'assistant' : entry.sender;
+        // Reconstruct the limited conversation for OpenAI
+        limitedHistory.forEach(entry => {
+            const role = entry.sender === 'assistant' ? 'assistant' : 'user';
             messages.push({
                 role: role,
                 content: entry.message
             });
         });
 
+        // Determine the current prompt
+        let currentPrompt = !initialPromptSent ? getKoyoriPersonalityPrompt(userName, promptText) : promptText;
 
-        // Add the new user message
-        messages.push({ role: 'user', content: promptText });
+        // Add the user's current message to the messages array and to the history
+        messages.push({ role: 'user', content: currentPrompt });
+        await addMessageToHistory(userId, currentPrompt, 'user');
 
         const response = await openai.chat.completions.create({
             model: 'gpt-3.5-turbo',
             messages: messages,
-            max_tokens: 500,
+            max_tokens: MAX_TOKENS,
         });
 
         // Add AI's response to history
         const aiResponse = response.choices[0].message.content;
-        await addMessageToHistory(userId, aiResponse, 'bot');
+        await addMessageToHistory(userId, aiResponse, 'assistant');
+
+        // Update the initial prompt flag if needed
+        if (!initialPromptSent) {
+            await connection.query('INSERT INTO userInitialPrompt (userId, initialPromptSent) VALUES (?, TRUE) ON DUPLICATE KEY UPDATE initialPromptSent = TRUE', [userId]);
+        }
 
         return aiResponse;
     } catch (error) {
         return handleOpenAIResponse(error);
     }
 }
+
+
+
 
 
 
