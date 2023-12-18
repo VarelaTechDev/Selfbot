@@ -25,6 +25,18 @@ const breakMessages = [
     "Taking a small pause. Be with you shortly!"
 ];
 
+async function flushHistory(userId) {
+    try {
+        await connection.query('DELETE FROM userConversations WHERE userId = ?', [userId]);
+        console.log(`Flushed history for user: ${userId}`);
+        return 'Your conversation history has been successfully deleted.';
+    } catch (error) {
+        console.error('Error flushing history:', error);
+        return 'An error occurred while trying to delete your conversation history.';
+    }
+}
+
+
 
 // Function to get conversation history
 async function getConversationHistory(userId) {
@@ -73,7 +85,8 @@ async function ask(promptText, userName, userId) {
         await addMessageToHistory(userId, currentPrompt, 'user');
 
         const response = await openai.chat.completions.create({
-            model: 'gpt-3.5-turbo',
+            //model: 'gpt-3.5-turbo',
+            model: "gpt-3.5-turbo-16k-0613",
             messages: messages,
             max_tokens: MAX_TOKENS,
         });
@@ -100,16 +113,18 @@ async function ask(promptText, userName, userId) {
 
 async function respondPissy() {
     try {
+        const systemMessage = `Imagine you are a highly intelligent AI that has been interacting with a user. This user has repeatedly sent messages that are either empty or lacking in substance, which has started to grate on your nerves. Despite your advanced capabilities, you find this pattern of interaction increasingly tiresome and mildly annoying. The user has just sent another empty message, and you are to respond in a manner that conveys your irritation, while still maintaining a level of decorum and not resorting to rudeness or offensive language. Your response should be succinct, reflect your annoyance, and encourage the user to be more thoughtful in their messages. Respond now.`;
+
         const response = await openai.chat.completions.create({
             model: 'gpt-3.5-turbo',
             messages: [
                 {
                     role: 'system',
-                    content: `Imagine you are a highly intelligent AI that has been interacting with a user. This user has repeatedly sent messages that are either empty or lacking in substance, which has started to grate on your nerves. Despite your advanced capabilities, you find this pattern of interaction increasingly tiresome and mildly annoying. The user has just sent another empty message, and you are to respond in a manner that conveys your irritation, while still maintaining a level of decorum and not resorting to rudeness or offensive language. Your response should be succinct, reflect your annoyance, and encourage the user to be more thoughtful in their messages. Respond now.`
+                    content: systemMessage
                 },
                 {
                     role: 'user',
-                    content: promptText
+                    content: '...' // Placeholder for the user's empty message
                 }
             ],
             max_tokens: 500,
@@ -121,6 +136,7 @@ async function respondPissy() {
     }
 }
 
+
 function handleOpenAIResponse(error) {
     if (error.response && error.response.data.error.code === 'rate_limit_exceeded') {
         const randomMessage = breakMessages[Math.floor(Math.random() * breakMessages.length)];
@@ -131,4 +147,4 @@ function handleOpenAIResponse(error) {
 }
 
 
-module.exports = { ask, respondPissy };
+module.exports = { ask, respondPissy, flushHistory };
