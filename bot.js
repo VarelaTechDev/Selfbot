@@ -11,12 +11,27 @@ client.on('ready', async() => {
     // client.user.setStatus('invisible')
 });
 
-// Function to split and send long messages
+// Function to split and send long messages without cutting words in half
 async function sendLongMessage(channel, longMessage, charLimit = 1500) {
-    for (let i = 0; i < longMessage.length; i += charLimit) {
-        const messageChunk = longMessage.substring(i, Math.min(longMessage.length, i + charLimit));
+    let startIndex = 0;
+
+    while (startIndex < longMessage.length) {
+        // Find the nearest space before the character limit
+        let endIndex = Math.min(startIndex + charLimit, longMessage.length);
+        if (endIndex < longMessage.length) {
+            const lastSpaceIndex = longMessage.lastIndexOf(' ', endIndex);
+            endIndex = lastSpaceIndex > startIndex ? lastSpaceIndex : endIndex;
+        }
+
+        // Extract the message chunk and send it
+        const messageChunk = longMessage.substring(startIndex, endIndex).trim();
         await channel.send(messageChunk);
-        await new Promise(resolve => setTimeout(resolve, 1000)); // 1 second delay
+
+        // Update the start index for the next chunk
+        startIndex = endIndex;
+
+        // Wait for a second before sending the next chunk
+        await new Promise(resolve => setTimeout(resolve, 1000));
     }
 }
 
