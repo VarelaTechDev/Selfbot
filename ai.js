@@ -86,7 +86,8 @@ async function ask(promptText, userName, userId) {
 
         const response = await openai.chat.completions.create({
             //model: 'gpt-3.5-turbo',
-            model: "gpt-3.5-turbo-16k-0613",
+            model: 'gpt-3.5-turbo-0613',
+            // model: "gpt-3.5-turbo-16k-0613",
             messages: messages,
             max_tokens: MAX_TOKENS,
         });
