@@ -62,8 +62,6 @@ async function ask(promptText, userName, userId) {
         let conversationHistory = await getConversationHistory(userId);
 
         // Limit the conversation history to the last HISTORY_LIMIT messages
-        // This ensures that the conversation context sent to OpenAI is recent and relevant
-        // It could include any combination of user and bot messages, totaling up to HISTORY_LIMIT messages
         let limitedHistory = conversationHistory.slice(-HISTORY_LIMIT);
 
         let messages = [];
@@ -77,17 +75,20 @@ async function ask(promptText, userName, userId) {
             });
         });
 
+        // Context about the bot's capabilities
+        const botCapabilitiesContext = "As a Discord bot, I can mention users when needed. ";
+        
+        let currentPrompt = botCapabilitiesContext;
+
         // Determine the current prompt
-        let currentPrompt = !initialPromptSent ? getKoyoriPersonalityPrompt(userName, promptText) : promptText;
+        currentPrompt += !initialPromptSent ? getKoyoriPersonalityPrompt(userName, promptText) : promptText;
 
         // Add the user's current message to the messages array and to the history
         messages.push({ role: 'user', content: currentPrompt });
         await addMessageToHistory(userId, currentPrompt, 'user');
 
         const response = await openai.chat.completions.create({
-            //model: 'gpt-3.5-turbo',
-            model: 'gpt-3.5-turbo-0613',
-            // model: "gpt-3.5-turbo-16k-0613",
+            model: "gpt-3.5-turbo-16k-0613",
             messages: messages,
             max_tokens: MAX_TOKENS,
         });
